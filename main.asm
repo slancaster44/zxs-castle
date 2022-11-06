@@ -19,6 +19,7 @@ start:
     call paintCastle
     call paintRoad
     call paintGrass
+    call paintHorizon
 
     ld c,1
     ld d,03h

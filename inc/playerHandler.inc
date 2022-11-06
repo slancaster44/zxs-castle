@@ -11,6 +11,8 @@ Player:
     dw 8080h
 .lastPos
     dw 9090h
+.outOfBoundsX    equ 31h
+.outOfBoundsY    equ 39h
 
 playerHandler:
     call MovePlayer
@@ -72,13 +74,9 @@ MovePlayer:
     jr .checkBounds
 
 .checkBounds:
-    ld a,h
-    cp 31h ;TODO: Eliminate magic value
-    jp p,.saveAndExit
-
     ld a,l
-    cp 39h
-    jp p,.saveAndExit
+    cp 0xC0
+    jp m,.saveAndExit
 
     jr .exit
 
@@ -98,7 +96,7 @@ DrawPlayer:
     push af
 
     ld hl,(Player.curPos)
-    ld de,cobbleTile
+    ld de,playerSprite
     call print8x8
 
     ld hl,(Player.curPos)

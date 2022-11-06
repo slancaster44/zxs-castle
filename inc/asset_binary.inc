@@ -10,9 +10,14 @@ barTile:
 
 grassTile:
     incbin "assets/grass.bin"
+grassSurface:
+    incbin "assets/grass_surface.bin"
 
 skullTile:
     incbin "assets/skull.bin"
+
+playerSprite:
+    incbin "assets/player.bin"
 
 emptyTile:
     ds 8

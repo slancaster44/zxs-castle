@@ -90,15 +90,6 @@ roadCoords:
     dw 0x6070
     dw 0x6870
     dw 0x7070
-    dw 0x7078
-    dw 0x7080
-    dw 0x7088
-    dw 0x7090
-    dw 0x7098
-    dw 0x70A0
-    dw 0x70A8
-    dw 0x70B0
-    dw 0x70B8
 
     dw 0x7870
     dw 0x8070
@@ -107,29 +98,30 @@ roadCoords:
     dw 0x9870
     dw 0xA070
     dw 0xA870
-    dw 0xB070
-    dw 0xB870
-    dw 0xB868
-    dw 0xB860
+    dw 0xA868
+    dw 0xA860
+    dw 0xA858
+    dw 0xB058
     dw 0xB858
-    dw 0xB850
-    dw 0xB848
-    dw 0xB840
-    dw 0xB838
-    dw 0xB830
-    dw 0xB828
-    dw 0xC028
-    dw 0xC828
-    dw 0xC820
-    dw 0xC818
-    dw 0xC810
-    dw 0xC808
-    dw 0xD028
-    dw 0xD828
-    dw 0xE028
-    dw 0xE828
-    dw 0xF028
-    dw 0xFF28
+    dw 0xC058
+    dw 0xC858
+    dw 0xD058
+    dw 0xD858
+    dw 0xE058
+    dw 0xE858
+    dw 0xF058
+    dw 0xFF58
+
+    dw 0x7078
+    dw 0x7080
+    dw 0x7088
+    dw 0x7090
+    dw 0x7098
+    dw 0x70A0
+    dw 0x70A8
+    dw 0x70B0
+
+
 .end
 paintRoad:
     ld de,cobbleTile
@@ -146,7 +138,7 @@ paintRoad:
 
 grassCoords:
     dw 0x5840
-    dw 0xF050
+    dw 0xF048
     dw 0x2890
     dw 0xD080
 .end
@@ -161,6 +153,49 @@ paintGrass:
     or INK_GREEN
     ld ix,grassCoords
     ld bc,grassCoords.end
+    call batchAttr
+
+    ret
+
+horizonCoords:
+    dw 0x0030
+    dw 0x3030
+    dw 0x3830
+    dw 0x4030
+    dw 0x4830
+    dw 0x5030
+    dw 0x5830
+    dw 0x6030
+    dw 0x6830
+    dw 0x7030
+    dw 0x7830
+    dw 0x8030
+    dw 0x8830
+    dw 0x9030
+    dw 0x9830
+    dw 0xA030
+    dw 0xA830
+    dw 0xB030
+    dw 0xB830
+    dw 0xC030
+    dw 0xC830
+    dw 0xD030
+    dw 0xD830
+    dw 0xE030
+    dw 0xE830
+    dw 0xF030
+    dw 0xFF30
+.end
+
+paintHorizon:
+    ld de,grassSurface
+    ld ix,horizonCoords
+    ld bc,horizonCoords.end
+    call batchPaint
+
+    ld de,grassSurface
+    ld ix,horizonCoords
+    ld bc,horizonCoords.end
     call batchAttr
 
     ret
