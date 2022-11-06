@@ -1,0 +1,1369 @@
+# file opened: ./main.asm
+  1   0000                  org 8000h
+  2   8000                  device zxspectrum48
+  3   8000                  include "asset_binary.inc"
+# file opened: ./inc/asset_binary.inc
+  1+  8000
+  2+  8000              cobbleTile:
+  3+  8000                  incbin "assets/cobble.bin"
+  4+  8008
+  5+  8008              solidBlock:
+  6+  8008                  incbin "assets/ink_block.bin"
+  7+  8010
+  8+  8010              barTile:
+  9+  8010                  incbin "assets/bars.bin"
+ 10+  8018
+ 11+  8018              grassTile:
+ 12+  8018                  incbin "assets/grass.bin"
+ 13+  8020
+ 14+  8020              skullTile:
+ 15+  8020                  incbin "assets/skull.bin"
+ 16+  8028
+ 17+  8028              emptyTile:
+ 18+  8028 00 00 00...      ds 8
+# file closed: ./inc/asset_binary.inc
+  4   8030                  include "zxs_consts.inc"
+# file opened: ./inc/zxs_consts.inc
+  1+  8030              ;; Character color encoding ;;;;;;;;;;;
+  2+  8030              ; Usage: Or the desired attributes together
+  3+  8030              ; to produce the correct encoding for a given
+  4+  8030              ; pallette
+  5+  8030              ;
+  6+  8030              ; Example:
+  7+  8030              ;   ld a, 0
+  8+  8030              ;   or a, BRIGHT
+  9+  8030              ;   or a, PAPER_BLUE
+ 10+  8030              ;   or a, INK_RED
+ 11+  8030              ;
+ 12+  8030              ; The above creates and encoding for
+ 13+  8030              ; a bright character with blue background
+ 14+  8030              ; and red foreground
+ 15+  8030              ;
+ 16+  8030              ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ 17+  8030              FLASH   equ 10000000b
+ 18+  8030              BRIGHT  equ 01000000b
+ 19+  8030
+ 20+  8030              PAPER_BLACK     equ 00000000b
+ 21+  8030              PAPER_BLUE      equ 00001000b
+ 22+  8030              PAPER_RED       equ 00010000b
+ 23+  8030              PAPER_PINK      equ 00011000b
+ 24+  8030              PAPER_GREEN     equ 00100000b
+ 25+  8030              PAPER_CYAN      equ 00101000b
+ 26+  8030              PAPER_YELLOW    equ 00110000b
+ 27+  8030              PAPER_WHITE     equ 00111000b
+ 28+  8030
+ 29+  8030              INK_BLACK   equ 00000000b
+ 30+  8030              INK_BLUE    equ 00000001b
+ 31+  8030              INK_RED     equ 00000010b
+ 32+  8030              INK_PINK    equ 00000011b
+ 33+  8030              INK_GREEN   equ 00000100b
+ 34+  8030              INK_CYAN    equ 00000101b
+ 35+  8030              INK_YELLOW  equ 00000110b
+ 36+  8030              INK_WHITE   equ 00000111b
+ 37+  8030
+ 38+  8030              ;; Memory Map
+ 39+  8030              ROM_START   equ 0000h
+ 40+  8030              ROM_SIZE    equ 4000h
+ 41+  8030              ROM_END     equ 3FFFh
+ 42+  8030
+ 43+  8030              ;;A bitmap that indicates which pixels
+ 44+  8030              ;;show the paper color, and which show
+ 45+  8030              ;;the ink color
+ 46+  8030              SCREEN_BITMAP_START equ 4000h
+ 47+  8030              SCREEN_BITMAP_SIZE  equ 1800h
+ 48+  8030              SCREEN_BITMAP_END   equ 57FFh
+ 49+  8030
+ 50+  8030              ;;A tile map showing which 8x8
+ 51+  8030              ;;squares have which colors
+ 52+  8030              COLOR_ATTR_START    equ 5800h
+ 53+  8030              COLOR_ATTR_SIZE     equ 0300h
+ 54+  8030              COLOR_ATTR_END      equ 5AFFh
+ 55+  8030
+ 56+  8030              BASIC_START equ 5B00h
+ 57+  8030              BASIC_SIZE  equ 01CBh
+ 58+  8030              BASIC_END   equ 5CCAh
+ 59+  8030
+ 60+  8030              CONTENDED_USER_RAM_START    equ 5CCBh
+ 61+  8030              CONTENDED_USER_RAM_SIZE     equ 2335h
+ 62+  8030              CONTENDED_USER_RAM_END      equ 7FFFh
+ 63+  8030
+ 64+  8030              USER_RAM_START equ 8000h
+ 65+  8030              USER_RAM_SIZE  equ 7F58h
+ 66+  8030              USER_RAM_END   equ 0xFF57
+ 67+  8030
+ 68+  8030              USER_DEF_GRAPHICS_START equ 0xFF58
+ 69+  8030              USER_DEF_GRAPHICS_SIZE  equ 0xA7
+ 70+  8030              USER_DEF_GRAPHICS_END   equ 0xFFFF
+ 71+  8030
+ 72+  8030              ;; I/O Map ;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ 73+  8030              ;Usage: Reading from these ports will
+ 74+  8030              ;return a byte where a zero in the one
+ 75+  8030              ;of the lowest 5 bits indicates that the
+ 76+  8030              ;corresponding key is depressed
+ 77+  8030              ;
+ 78+  8030              ;ld bc,<key_set_to_read>
+ 79+  8030              ;in a, (c)
+ 80+  8030              ;bit <key_bit>,a ; Sets zero flag to 0 if it the given key was depressed
+ 81+  8030              ;
+ 82+  8030              READ_SHIFT_ZXCV         equ 0xFEFE
+ 83+  8030              KEY_BIT_SHIFT           equ 0
+ 84+  8030              KEY_BIT_Z               equ 1
+ 85+  8030              KEY_BIT_X               equ 2
+ 86+  8030              KEY_BIT_C               equ 3
+ 87+  8030              KEY_BIT_V               equ 4
+ 88+  8030
+ 89+  8030              READ_ASDFG              equ 0xFDFE
+ 90+  8030              KEY_BIT_A               equ 0
+ 91+  8030              KEY_BIT_S               equ 1
+ 92+  8030              KEY_BIT_D               equ 2
+ 93+  8030              KEY_BIT_F               equ 3
+ 94+  8030              KEY_BIT_G               equ 4
+ 95+  8030
+ 96+  8030              READ_QWERT              equ 0xFBFE
+ 97+  8030              KEY_BIT_Q               equ 0
+ 98+  8030              KEY_BIT_W               equ 1
+ 99+  8030              KEY_BIT_E               equ 2
+100+  8030              KEY_BIT_R               equ 3
+101+  8030              KEY_BIT_T               equ 4
+102+  8030
+103+  8030              READ_12345              equ 0xF7FE
+104+  8030              KEY_BIT_1               equ 0
+105+  8030              KEY_BIT_2               equ 1
+106+  8030              KEY_BIT_3               equ 2
+107+  8030              KEY_BIT_4               equ 3
+108+  8030              KEY_BIT_5               equ 4
+109+  8030
+110+  8030              READ_09876              equ 0xEFFE
+111+  8030              KEY_BIT_0               equ 0
+112+  8030              KEY_BIT_9               equ 1
+113+  8030              KEY_BIT_8               equ 2
+114+  8030              KEY_BIT_7               equ 3
+115+  8030              KEY_BIT_6               equ 4
+116+  8030
+117+  8030              READ_POIUY              equ 0xDFFE
+118+  8030              KEY_BIT_P               equ 0
+119+  8030              KEY_BIT_O               equ 1
+120+  8030              KEY_BIT_I               equ 2
+121+  8030              KEY_BIT_U               equ 3
+122+  8030              KEY_BIT_Y               equ 4
+123+  8030
+124+  8030              READ_ENTER_LKJH         equ 0xBFFE
+125+  8030              KEY_BIT_ENTE            equ 0
+126+  8030              KEY_BIT_L               equ 1
+127+  8030              KEY_BIT_K               equ 2
+128+  8030              KEY_BIT_J               equ 3
+129+  8030              KEY_BIT_H               equ 4
+130+  8030
+131+  8030              READ_SPACE_SYM_SHFT_MNB equ 0x7FFE
+132+  8030              KEY_BIT_SPACE           equ 0
+133+  8030              KEY_BIT_SYM             equ 1
+134+  8030              KEY_BIT_M               equ 2
+135+  8030              KEY_BIT_N               equ 3
+136+  8030              KEY_BIT_B               equ 4
+137+  8030
+138+  8030
+139+  8030              ;; Character Set ;;;;;;;;;;;;;;
+140+  8030              ; The hex encodings for the zx spectrum character set
+141+  8030
+142+  8030              NEWLINE equ 0Dh
+143+  8030
+144+  8030
+145+  8030              ;; Useful ROM Routines Provided by the Spectrum
+146+  8030              ; Usage: call <routine_name> or rst <routine_name>
+147+  8030              ; will jump to the space in rom that the routine exists, and
+148+  8030              ; execute the routine.
+149+  8030              ;
+150+  8030              ; Sometimes, arguments may be passed to a
+151+  8030              ; rom routine using the registers
+152+  8030
+153+  8030              ;; Command: call
+154+  8030              ;; Arguments: None
+155+  8030              ;; Description: Clears the screen
+156+  8030              CLR_SCREEN equ 0DAFh
+157+  8030
+158+  8030              ;;Command: call
+159+  8030              ;;Arguments: a
+160+  8030              ;;Changes border color to color in a
+161+  8030              CHANGE_BORDER equ 229Bh
+162+  8030
+163+  8030              ;; Command: rst
+164+  8030              ;;Arguments: a register
+165+  8030              ;;Description: Prints character encoded in a
+166+  8030              PRINT_CHAR equ $10
+167+  8030
+168+  8030              ;;Multiplies hl by the immediate
+169+  8030              ;;    1011 :x
+170+  8030              ;;    1101 :y
+171+  8030              ;;    ----
+172+  8030              ;;    1011
+173+  8030              ;;   00000
+174+  8030              ;;  101100
+175+  8030              mulhl macro imm?
+176+  8030 ~                push af
+177+  8030 ~                push bc
+178+  8030 ~                push de
+179+  8030 ~
+180+  8030 ~                ld c,imm? ;;Values loaded, now hl * c
+181+  8030 ~                ld b,16
+182+  8030 ~
+183+  8030 ~                ld de,hl    ;;de stores x-value
+184+  8030 ~                ld hl,0000h ;;hl stores result
+185+  8030 ~
+186+  8030 ~            .loop:
+187+  8030 ~                bit 0,e
+188+  8030 ~                jr z,.continue
+189+  8030 ~
+190+  8030 ~                ld a,b
+191+  8030 ~                ld b,0
+192+  8030 ~                add hl,bc
+193+  8030 ~                ld b,a
+194+  8030 ~            .continue:
+195+  8030 ~                sla c
+196+  8030 ~                srl de
+197+  8030 ~                djnz .loop
+198+  8030 ~
+199+  8030 ~            .exit:
+200+  8030 ~                pop af
+201+  8030 ~                pop de
+202+  8030 ~                pop bc
+203+  8030              endm
+204+  8030
+205+  8030              ;;ix contains starting address
+206+  8030              ;;bc contains index
+207+  8030              ;;hl contains comparision word
+208+  8030              ;;WARNING: Clobbers 'a' register
+209+  8030              cpdr16:
+210+  8030 D5               push de
+211+  8031
+212+  8031              .loop:
+213+  8031 DD 5E 00         ld e,(ix)
+214+  8034 DD 56 01         ld d,(ix+1)
+215+  8037
+216+  8037 ED 52            sbc hl,de
+217+  8039 CA 4C 80         jp z,.exit
+218+  803C 19               add hl,de
+219+  803D
+220+  803D              .continue:
+221+  803D DD 23            inc ix
+222+  803F DD 23            inc ix
+223+  8041 0B               dec bc
+224+  8042 0B               dec bc
+225+  8043
+226+  8043 AF               xor a
+227+  8044 B0               or b
+228+  8045 B1               or c
+229+  8046 FE 00            cp 0
+230+  8048 20 E7            jr nz, .loop
+231+  804A C6 01            add a, 1 ;;Clear zero flag
+232+  804C
+233+  804C              .exit:
+234+  804C D1               pop de
+235+  804D C9               ret
+236+  804E
+237+  804E
+# file closed: ./inc/zxs_consts.inc
+  5   804E                  include "getPixelAddr.inc"
+# file opened: ./inc/getPixelAddr.inc
+  1+  804E
+  2+  804E              ;;hl :: x,y coords
+  3+  804E
+  4+  804E              getPixelAddr:
+  5+  804E F5               push af
+  6+  804F C5               push bc
+  7+  8050
+  8+  8050                  ;;Ld and mask out x coord
+  9+  8050 7C               ld a,h
+ 10+  8051 CB 1F            rr a
+ 11+  8053 CB 1F            rr a
+ 12+  8055 CB 1F            rr a
+ 13+  8057 E6 1F            and 0b00011111
+ 14+  8059 47               ld b,a
+ 15+  805A
+ 16+  805A                  ;;Mask in y bits 3,4,5
+ 17+  805A 7D               ld a,l
+ 18+  805B E6 38            and 0b00111000
+ 19+  805D CB 17            rl a
+ 20+  805F CB 17            rl a
+ 21+  8061
+ 22+  8061 B0               or b ;;a now has the proper low byte
+ 23+  8062 45               ld b,l
+ 24+  8063 6F               ld l,a ;;Save low byte
+ 25+  8064
+ 26+  8064
+ 27+  8064 78               ld a,b ;;Gather y coord
+ 28+  8065 E6 07            and 0b00000111
+ 29+  8067 67               ld h,a
+ 30+  8068
+ 31+  8068 78               ld a,b
+ 32+  8069 E6 C0            and 0b11000000
+ 33+  806B 1F               rra
+ 34+  806C 1F               rra
+ 35+  806D 1F               rra
+ 36+  806E C6 40            add a,0b01000000
+ 37+  8070 B4               or h
+ 38+  8071 67               ld h,a
+ 39+  8072
+ 40+  8072 C1               pop bc
+ 41+  8073 F1               pop af
+ 42+  8074 C9               ret
+# file closed: ./inc/getPixelAddr.inc
+  6   8075                  include "mkScreenBlack.inc"
+# file opened: ./inc/mkScreenBlack.inc
+  1+  8075
+  2+  8075              mkScreenBlack:
+  3+  8075
+  4+  8075 3E 00            ld a,PAPER_BLACK
+  5+  8077 CD 9B 22         call CHANGE_BORDER
+  6+  807A
+  7+  807A 21 00 58         ld hl,COLOR_ATTR_START
+  8+  807D 11 00 5B         ld de,COLOR_ATTR_END+1
+  9+  8080 F6 07            or INK_WHITE
+ 10+  8082
+ 11+  8082 47               ld b,a
+ 12+  8083              .loop:
+ 13+  8083 70               ld (hl),b
+ 14+  8084 23               inc hl
+ 15+  8085
+ 16+  8085 7A               ld a,d
+ 17+  8086 BC               cp h
+ 18+  8087 C2 83 80         jp nz, .loop
+ 19+  808A
+ 20+  808A 7B               ld a,e
+ 21+  808B BD               cp l
+ 22+  808C C2 83 80         jp nz, .loop
+ 23+  808F
+ 24+  808F C9               ret
+# file closed: ./inc/mkScreenBlack.inc
+  7   8090                  include "batchPaint.inc"
+# file opened: ./inc/batchPaint.inc
+  1+  8090
+  2+  8090              ;;Arguments in
+  3+  8090              ;;de: start of tile info
+  4+  8090              ;;ix: start addr of coords
+  5+  8090              ;;bc: address after end of coords
+  6+  8090              batchPaint:
+  7+  8090 E5               push hl
+  8+  8091 0B               dec bc ;; And end lable will be off by one address
+  9+  8092
+ 10+  8092              .loop
+ 11+  8092                  ;;Get current coordinate & print
+ 12+  8092 DD 66 01         ld h,(ix+1)
+ 13+  8095 DD 6E 00         ld l,(ix)
+ 14+  8098 CD EF 81         call print8x8
+ 15+  809B
+ 16+  809B                  ;;Get next addr
+ 17+  809B DD 23            inc ix
+ 18+  809D DD 23            inc ix
+ 19+  809F
+ 20+  809F DD E5 E1         ld hl,ix
+ 21+  80A2 ED 42            sbc hl,bc
+ 22+  80A4 FA 92 80         jp m, .loop
+ 23+  80A7
+ 24+  80A7 E1               pop hl
+ 25+  80A8 C9               ret
+ 26+  80A9
+ 27+  80A9              ;;Arguments in
+ 28+  80A9              ;;a desired attribute byte
+ 29+  80A9              ;;ix: start addr of coords
+ 30+  80A9              ;;bc: address after end of coords
+ 31+  80A9              batchAttr:
+ 32+  80A9 E5               push hl
+ 33+  80AA 0B               dec bc
+ 34+  80AB
+ 35+  80AB              .loop
+ 36+  80AB DD 66 01         ld h,(ix+1)
+ 37+  80AE DD 6E 00         ld l,(ix)
+ 38+  80B1 CD 0D 82         call applyAttrAt
+ 39+  80B4
+ 40+  80B4 DD 23            inc ix
+ 41+  80B6 DD 23            inc ix
+ 42+  80B8
+ 43+  80B8 DD E5 E1         ld hl,ix
+ 44+  80BB ED 42            sbc hl,bc
+ 45+  80BD
+ 46+  80BD FA AB 80         jp m, .loop
+ 47+  80C0
+ 48+  80C0              .end:
+ 49+  80C0 E1               pop hl
+ 50+  80C1 C9               ret
+ 51+  80C2
+# file closed: ./inc/batchPaint.inc
+  8   80C2                  include "paintLandscape.inc"
+# file opened: ./inc/paintLandscape.inc
+  1+  80C2
+  2+  80C2              castleCoords:
+  3+  80C2 00 00            dw 0x0000
+  4+  80C4 00 10            dw 0x1000
+  5+  80C6 00 20            dw 0x2000
+  6+  80C8 00 30            dw 0x3000
+  7+  80CA
+  8+  80CA 08 00            dw 0x0008
+  9+  80CC 08 08            dw 0x0808
+ 10+  80CE 08 10            dw 0x1008
+ 11+  80D0 08 18            dw 0x1808
+ 12+  80D2 08 20            dw 0x2008
+ 13+  80D4 08 28            dw 0x2808
+ 14+  80D6 08 30            dw 0x3008
+ 15+  80D8
+ 16+  80D8 10 08            dw 0x0810
+ 17+  80DA 10 10            dw 0x1010
+ 18+  80DC 10 18            dw 0x1810
+ 19+  80DE 10 20            dw 0x2010
+ 20+  80E0 10 28            dw 0x2810
+ 21+  80E2
+ 22+  80E2 18 08            dw 0x0818
+ 23+  80E4 18 10            dw 0x1018
+ 24+  80E6 18 18            dw 0x1818
+ 25+  80E8 18 20            dw 0x2018
+ 26+  80EA 18 28            dw 0x2818
+ 27+  80EC
+ 28+  80EC 20 08            dw 0x0820
+ 29+  80EE 20 10            dw 0x1020
+ 30+  80F0 20 18            dw 0x1820
+ 31+  80F2 20 20            dw 0x2020
+ 32+  80F4 20 28            dw 0x2820
+ 33+  80F6
+ 34+  80F6 28 08            dw 0x0828
+ 35+  80F8 28 10            dw 0x1028
+ 36+  80FA 28 18            dw 0x1828
+ 37+  80FC 28 20            dw 0x2028
+ 38+  80FE 28 28            dw 0x2828
+ 39+  8100
+ 40+  8100 30 08            dw 0x0830
+ 41+  8102 30 10            dw 0x1030
+ 42+  8104 30 20            dw 0x2030
+ 43+  8106 30 28            dw 0x2830
+ 44+  8108
+ 45+  8108 38 08            dw 0x0838
+ 46+  810A 38 10            dw 0x1038
+ 47+  810C 38 20            dw 0x2038
+ 48+  810E 38 28            dw 0x2838
+ 49+  8110              .end
+ 50+  8110
+ 51+  8110              castleDoorCoords:
+ 52+  8110 30 18            dw 0x1830
+ 53+  8112 38 18            dw 0x1838
+ 54+  8114              .end
+ 55+  8114
+ 56+  8114              paintCastle:
+ 57+  8114 11 00 80         ld de,cobbleTile
+ 58+  8117 DD 21 C2 80      ld ix,castleCoords
+ 59+  811B 01 10 81         ld bc,castleCoords.end
+ 60+  811E CD 90 80         call batchPaint
+ 61+  8121
+ 62+  8121 11 10 80         ld de,barTile
+ 63+  8124 DD 21 10 81      ld ix,castleDoorCoords
+ 64+  8128 01 14 81         ld bc,castleDoorCoords.end
+ 65+  812B CD 90 80         call batchPaint
+ 66+  812E
+ 67+  812E 3E 10            ld a,PAPER_RED
+ 68+  8130 F6 06            or INK_YELLOW
+ 69+  8132 DD 21 10 81      ld ix,castleDoorCoords
+ 70+  8136 01 14 81         ld bc,castleDoorCoords.end
+ 71+  8139 CD A9 80         call batchAttr
+ 72+  813C C9               ret
+ 73+  813D
+ 74+  813D              roadCoords:
+ 75+  813D 40 18            dw 0x1840
+ 76+  813F 48 18            dw 0x1848
+ 77+  8141 50 18            dw 0x1850
+ 78+  8143 58 18            dw 0x1858
+ 79+  8145 58 20            dw 0x2058
+ 80+  8147 58 28            dw 0x2858
+ 81+  8149 58 30            dw 0x3058
+ 82+  814B 58 38            dw 0x3858
+ 83+  814D 58 40            dw 0x4058
+ 84+  814F 58 48            dw 0x4858
+ 85+  8151 58 50            dw 0x5058
+ 86+  8153 60 50            dw 0x5060
+ 87+  8155 68 50            dw 0x5068
+ 88+  8157 70 50            dw 0x5070
+ 89+  8159 70 58            dw 0x5870
+ 90+  815B 70 60            dw 0x6070
+ 91+  815D 70 68            dw 0x6870
+ 92+  815F 70 70            dw 0x7070
+ 93+  8161 78 70            dw 0x7078
+ 94+  8163 80 70            dw 0x7080
+ 95+  8165 88 70            dw 0x7088
+ 96+  8167 90 70            dw 0x7090
+ 97+  8169 98 70            dw 0x7098
+ 98+  816B A0 70            dw 0x70A0
+ 99+  816D A8 70            dw 0x70A8
+100+  816F B0 70            dw 0x70B0
+101+  8171 B8 70            dw 0x70B8
+102+  8173
+103+  8173 70 78            dw 0x7870
+104+  8175 70 80            dw 0x8070
+105+  8177 70 88            dw 0x8870
+106+  8179 70 90            dw 0x9070
+107+  817B 70 98            dw 0x9870
+108+  817D 70 A0            dw 0xA070
+109+  817F 70 A8            dw 0xA870
+110+  8181 70 B0            dw 0xB070
+111+  8183 70 B8            dw 0xB870
+112+  8185 68 B8            dw 0xB868
+113+  8187 60 B8            dw 0xB860
+114+  8189 58 B8            dw 0xB858
+115+  818B 50 B8            dw 0xB850
+116+  818D 48 B8            dw 0xB848
+117+  818F 40 B8            dw 0xB840
+118+  8191 38 B8            dw 0xB838
+119+  8193 30 B8            dw 0xB830
+120+  8195 28 B8            dw 0xB828
+121+  8197 28 C0            dw 0xC028
+122+  8199 28 C8            dw 0xC828
+123+  819B 20 C8            dw 0xC820
+124+  819D 18 C8            dw 0xC818
+125+  819F 10 C8            dw 0xC810
+126+  81A1 08 C8            dw 0xC808
+127+  81A3 28 D0            dw 0xD028
+128+  81A5 28 D8            dw 0xD828
+129+  81A7 28 E0            dw 0xE028
+130+  81A9 28 E8            dw 0xE828
+131+  81AB 28 F0            dw 0xF028
+132+  81AD 28 FF            dw 0xFF28
+133+  81AF              .end
+134+  81AF              paintRoad:
+135+  81AF 11 00 80         ld de,cobbleTile
+136+  81B2 DD 21 3D 81      ld ix,roadCoords
+137+  81B6 01 AF 81         ld bc,roadCoords.end
+138+  81B9 CD 90 80         call batchPaint
+139+  81BC
+140+  81BC 3E 38            ld a,PAPER_WHITE
+141+  81BE F6 00            or INK_BLACK
+142+  81C0 DD 21 3D 81      ld ix,roadCoords
+143+  81C4 01 AF 81         ld bc,roadCoords.end
+144+  81C7 CD A9 80         call batchAttr
+145+  81CA C9               ret
+146+  81CB
+147+  81CB              grassCoords:
+148+  81CB 40 58            dw 0x5840
+149+  81CD 50 F0            dw 0xF050
+150+  81CF 90 28            dw 0x2890
+151+  81D1 80 D0            dw 0xD080
+152+  81D3              .end
+153+  81D3
+154+  81D3              paintGrass:
+155+  81D3 11 18 80         ld de,grassTile
+156+  81D6 DD 21 CB 81      ld ix,grassCoords
+157+  81DA 01 D3 81         ld bc, grassCoords.end
+158+  81DD CD 90 80         call batchPaint
+159+  81E0
+160+  81E0 3E 00            ld a,PAPER_BLACK
+161+  81E2 F6 04            or INK_GREEN
+162+  81E4 DD 21 CB 81      ld ix,grassCoords
+163+  81E8 01 D3 81         ld bc,grassCoords.end
+164+  81EB CD A9 80         call batchAttr
+165+  81EE
+166+  81EE C9               ret
+# file closed: ./inc/paintLandscape.inc
+  9   81EF                  include "print8x8.inc"
+# file opened: ./inc/print8x8.inc
+  1+  81EF
+  2+  81EF              ;; hl:: X,Y Off top left corner in screen ram
+  3+  81EF              ;; de:: start of tile information
+  4+  81EF              print8x8:
+  5+  81EF F5               push af
+  6+  81F0 C5               push bc
+  7+  81F1 D5               push de
+  8+  81F2 E5               push hl
+  9+  81F3 DD E5            push ix
+ 10+  81F5
+ 11+  81F5
+ 12+  81F5 06 08            ld b,8
+ 13+  81F7
+ 14+  81F7              .loop:
+ 15+  81F7 E5 DD E1         ld ix,hl
+ 16+  81FA CD 4E 80         call getPixelAddr
+ 17+  81FD
+ 18+  81FD 1A               ld a,(de)
+ 19+  81FE 77               ld (hl),a
+ 20+  81FF 13               inc de
+ 21+  8200
+ 22+  8200 DD E5 E1         ld hl,ix
+ 23+  8203 2C               inc l
+ 24+  8204 10 F1            djnz .loop
+ 25+  8206
+ 26+  8206              .cont:
+ 27+  8206 DD E1            pop ix
+ 28+  8208 E1               pop hl
+ 29+  8209 D1               pop de
+ 30+  820A C1               pop bc
+ 31+  820B F1               pop af
+ 32+  820C C9               ret
+ 33+  820D
+ 34+  820D              ;a:  the attribute to be applied
+ 35+  820D              ;hl: the coord of the attribute
+ 36+  820D              applyAttrAt:
+ 37+  820D C5               push bc
+ 38+  820E D5               push de
+ 39+  820F F5               push af
+ 40+  8210 E5               push hl
+ 41+  8211
+ 42+  8211 4F               ld c,a ;;Save attribute
+ 43+  8212
+ 44+  8212                  ;;Divide by 8 to find attr coords
+ 45+  8212 7C               ld a,h
+ 46+  8213 CB 3F            srl a
+ 47+  8215 CB 3F            srl a
+ 48+  8217 CB 3F            srl a
+ 49+  8219 67               ld h,a
+ 50+  821A
+ 51+  821A 7D               ld a,l
+ 52+  821B CB 3F            srl a
+ 53+  821D CB 3F            srl a
+ 54+  821F CB 3F            srl a
+ 55+  8221 6F               ld l,a
+ 56+  8222
+ 57+  8222              ;;hl now contains the coords of
+ 58+  8222              ;;the location in screen attr mem
+ 59+  8222              ;;we now need to convert that to
+ 60+  8222              ;;a linear location
+ 61+  8222
+ 62+  8222 44               ld b,h
+ 63+  8223 65               ld h,l
+ 64+  8224 68               ld l,b
+ 65+  8225
+ 66+  8225 44               ld b,h
+ 67+  8226 26 00            ld h,00
+ 68+  8228 11 20 00         ld de,32
+ 69+  822B              .mul_loop:
+ 70+  822B 19               add hl,de
+ 71+  822C 10 FD            djnz .mul_loop
+ 72+  822E
+ 73+  822E              ;;Apply attribute and clean up
+ 74+  822E 11 00 58         ld de,COLOR_ATTR_START
+ 75+  8231 19               add hl,de
+ 76+  8232 71               ld (hl),c
+ 77+  8233
+ 78+  8233 79               ld a,c
+ 79+  8234 E1               pop hl
+ 80+  8235 F1               pop af
+ 81+  8236 D1               pop de
+ 82+  8237 C1               pop bc
+ 83+  8238 C9               ret
+# file closed: ./inc/print8x8.inc
+ 10   8239                  include "mainLoop.inc"
+# file opened: ./inc/mainLoop.inc
+  1+  8239              mainLoop:
+  2+  8239 CD AA 83         call monsterHandler
+  3+  823C CD 5F 82         call playerHandler
+  4+  823F
+  5+  823F CD 46 82         call timeDelay
+  6+  8242 18 F5            jr mainLoop
+  7+  8244
+  8+  8244              DelayLength:
+  9+  8244 FF FF            dw 0xFFFF
+ 10+  8246              timeDelay:
+ 11+  8246 E5               push hl
+ 12+  8247 F5               push af
+ 13+  8248
+ 14+  8248 AF               xor a
+ 15+  8249 2A 44 82         ld hl,(DelayLength)
+ 16+  824C
+ 17+  824C              .loop:
+ 18+  824C 2B               dec hl
+ 19+  824D BC               cp h
+ 20+  824E C2 4C 82         jp nz,.loop
+ 21+  8251 BD               cp l
+ 22+  8252 C2 4C 82         jp nz,.loop
+ 23+  8255
+ 24+  8255              .exit:
+ 25+  8255 F1               pop af
+ 26+  8256 E1               pop hl
+ 27+  8257 C9               ret
+ 28+  8258
+# file closed: ./inc/mainLoop.inc
+ 11   8258                  include "playerHandler.inc"
+# file opened: ./inc/playerHandler.inc
+  1+  8258
+  2+  8258              CastleHP:
+  3+  8258 64               db 64h
+  4+  8259
+  5+  8259              Player:
+  6+  8259              .curSpriteID
+  7+  8259 00               db 00h
+  8+  825A              .curHealth
+  9+  825A 10               db 10h
+ 10+  825B              .curPos
+ 11+  825B 80 80            dw 8080h
+ 12+  825D              .lastPos
+ 13+  825D 90 90            dw 9090h
+ 14+  825F
+ 15+  825F              playerHandler:
+ 16+  825F CD 69 82         call MovePlayer
+ 17+  8262 CD C4 82         call DrawPlayer
+ 18+  8265 CD DE 82         call RepaintOldPlayerPosition
+ 19+  8268              .exit
+ 20+  8268 C9               ret
+ 21+  8269
+ 22+  8269              MovePlayer:
+ 23+  8269 C5               push bc
+ 24+  826A F5               push af
+ 25+  826B E5               push hl
+ 26+  826C
+ 27+  826C 2A 5B 82         ld hl,(Player.curPos)
+ 28+  826F
+ 29+  826F              .readInKeys:
+ 30+  826F 01 FE FD         ld bc,READ_ASDFG
+ 31+  8272 ED 78            in a,(c)
+ 32+  8274
+ 33+  8274 CB 47            bit KEY_BIT_A,a
+ 34+  8276 28 23            jr z, .moveLeft
+ 35+  8278
+ 36+  8278 CB 4F            bit KEY_BIT_S,a
+ 37+  827A 28 17            jr z, .moveDown
+ 38+  827C
+ 39+  827C CB 57            bit KEY_BIT_D,a
+ 40+  827E 28 23            jr z,.moveRight
+ 41+  8280
+ 42+  8280 01 FE FB         ld bc,READ_QWERT
+ 43+  8283 ED 78            in a,(c)
+ 44+  8285 CB 4F            bit KEY_BIT_W,a
+ 45+  8287 28 02            jr z,.moveUp
+ 46+  8289
+ 47+  8289 18 35            jr .exit
+ 48+  828B
+ 49+  828B              .moveUp:
+ 50+  828B 44 4D            ld bc,hl ;;Save old coords in bc, so they can be saved in memory later
+ 51+  828D 7D               ld a,l
+ 52+  828E D6 08            sub 08h
+ 53+  8290 6F               ld l,a
+ 54+  8291 18 18            jr .checkBounds
+ 55+  8293              .moveDown:
+ 56+  8293 44 4D            ld bc,hl
+ 57+  8295 7D               ld a,l
+ 58+  8296 C6 08            add a,08h
+ 59+  8298 6F               ld l,a
+ 60+  8299 18 10            jr .checkBounds
+ 61+  829B              .moveLeft:
+ 62+  829B 44 4D            ld bc,hl
+ 63+  829D 7C               ld a,h
+ 64+  829E D6 08            sub 08h
+ 65+  82A0 67               ld h,a
+ 66+  82A1 18 08            jr .checkBounds
+ 67+  82A3              .moveRight:
+ 68+  82A3 44 4D            ld bc,hl
+ 69+  82A5 7C               ld a,h
+ 70+  82A6 C6 08            add a,08h
+ 71+  82A8 67               ld h,a
+ 72+  82A9 18 00            jr .checkBounds
+ 73+  82AB
+ 74+  82AB              .checkBounds:
+ 75+  82AB 7C               ld a,h
+ 76+  82AC FE 31            cp 31h ;TODO: Eliminate magic value
+ 77+  82AE F2 B9 82         jp p,.saveAndExit
+ 78+  82B1
+ 79+  82B1 7D               ld a,l
+ 80+  82B2 FE 39            cp 39h
+ 81+  82B4 F2 B9 82         jp p,.saveAndExit
+ 82+  82B7
+ 83+  82B7 18 07            jr .exit
+ 84+  82B9
+ 85+  82B9              .saveAndExit:
+ 86+  82B9 ED 43 5D 82      ld (Player.lastPos),bc
+ 87+  82BD 22 5B 82         ld (Player.curPos),hl
+ 88+  82C0
+ 89+  82C0              .exit
+ 90+  82C0 E1               pop hl
+ 91+  82C1 F1               pop af
+ 92+  82C2 C1               pop bc
+ 93+  82C3 C9               ret
+ 94+  82C4
+ 95+  82C4              DrawPlayer:
+ 96+  82C4 E5               push hl
+ 97+  82C5 D5               push de
+ 98+  82C6 F5               push af
+ 99+  82C7
+100+  82C7 2A 5B 82         ld hl,(Player.curPos)
+101+  82CA 11 00 80         ld de,cobbleTile
+102+  82CD CD EF 81         call print8x8
+103+  82D0
+104+  82D0 2A 5B 82         ld hl,(Player.curPos)
+105+  82D3 3E 38            ld a,PAPER_WHITE
+106+  82D5 F6 03            or INK_PINK
+107+  82D7 CD 0D 82         call applyAttrAt
+108+  82DA
+109+  82DA              .exit:
+110+  82DA F1               pop af
+111+  82DB D1               pop de
+112+  82DC E1               pop hl
+113+  82DD C9               ret
+114+  82DE
+115+  82DE              RepaintOldPlayerPosition:
+116+  82DE D5               push de
+117+  82DF DD E5            push ix
+118+  82E1 C5               push bc
+119+  82E2 E5               push hl
+120+  82E3 F5               push af
+121+  82E4
+122+  82E4 DD 21 3D 81      ld ix,roadCoords
+123+  82E8 21 AF 81         ld hl,roadCoords.end
+124+  82EB 11 3D 81         ld de,roadCoords
+125+  82EE ED 52            sbc hl,de
+126+  82F0 44 4D            ld bc,hl
+127+  82F2 2A 5D 82         ld hl,(Player.lastPos)
+128+  82F5 CD 30 80         call cpdr16
+129+  82F8 28 41            jr z,.paintRoadOnOldPlayerLoc
+130+  82FA
+131+  82FA DD 21 10 81      ld ix,castleDoorCoords
+132+  82FE 21 14 81         ld hl,castleDoorCoords.end
+133+  8301 11 10 81         ld de,castleDoorCoords
+134+  8304 ED 52            sbc hl,de
+135+  8306 44 4D            ld bc,hl
+136+  8308 2A 5D 82         ld hl,(Player.lastPos)
+137+  830B CD 30 80         call cpdr16
+138+  830E 28 55            jr z,.paintDoorOnOldPlayerLoc
+139+  8310
+140+  8310 DD 21 CB 81      ld ix,grassCoords
+141+  8314 21 D3 81         ld hl,grassCoords.end
+142+  8317 11 CB 81         ld de,grassCoords
+143+  831A ED 52            sbc hl,de
+144+  831C 44 4D            ld bc,hl
+145+  831E 2A 5D 82         ld hl,(Player.lastPos)
+146+  8321 CD 30 80         call cpdr16
+147+  8324 28 2A            jr z,.paintGrassOnOldPlayerLoc
+148+  8326
+149+  8326              .paintBlackOnOldPlayerLoc:
+150+  8326 2A 5D 82         ld hl,(Player.lastPos)
+151+  8329 11 28 80         ld de,emptyTile
+152+  832C CD EF 81         call print8x8
+153+  832F
+154+  832F 2A 5D 82         ld hl,(Player.lastPos)
+155+  8332 3E 00            ld a,PAPER_BLACK
+156+  8334 F6 07            or INK_WHITE
+157+  8336 CD 0D 82         call applyAttrAt
+158+  8339
+159+  8339 18 3F            jr .exit
+160+  833B
+161+  833B              .paintRoadOnOldPlayerLoc:
+162+  833B 2A 5D 82         ld hl,(Player.lastPos)
+163+  833E 11 00 80         ld de,cobbleTile
+164+  8341 CD EF 81         call print8x8
+165+  8344
+166+  8344
+167+  8344 2A 5D 82         ld hl,(Player.lastPos)
+168+  8347 3E 38            ld a,PAPER_WHITE
+169+  8349 F6 00            or INK_BLACK
+170+  834B CD 0D 82         call applyAttrAt
+171+  834E
+172+  834E 18 2A            jr .exit
+173+  8350
+174+  8350              .paintGrassOnOldPlayerLoc:
+175+  8350 2A 5D 82         ld hl,(Player.lastPos)
+176+  8353 11 18 80         ld de, grassTile
+177+  8356 CD EF 81         call print8x8
+178+  8359
+179+  8359 2A 5D 82         ld hl,(Player.lastPos)
+180+  835C 3E 00            ld a,PAPER_BLACK
+181+  835E F6 04            or INK_GREEN
+182+  8360 CD 0D 82         call applyAttrAt
+183+  8363
+184+  8363 18 15            jr .exit
+185+  8365
+186+  8365              .paintDoorOnOldPlayerLoc:
+187+  8365 2A 5D 82         ld hl,(Player.lastPos)
+188+  8368 11 10 80         ld de,barTile
+189+  836B CD EF 81         call print8x8
+190+  836E
+191+  836E 2A 5D 82         ld hl,(Player.lastPos)
+192+  8371 3E 10            ld a,PAPER_RED
+193+  8373 F6 06            or INK_YELLOW
+194+  8375 CD 0D 82         call applyAttrAt
+195+  8378
+196+  8378 18 00            jr .exit
+197+  837A              .exit
+198+  837A F1               pop af
+199+  837B E1               pop hl
+200+  837C C1               pop bc
+201+  837D DD E1            pop ix
+202+  837F D1               pop de
+203+  8380 C9               ret
+# file closed: ./inc/playerHandler.inc
+ 12   8381
+ 13   8381              start:
+ 14   8381 ED 56            im 1
+ 15   8383 31 57 FF         ld sp,USER_RAM_END
+ 16   8386
+ 17   8386 CD AF 0D         call CLR_SCREEN
+ 18   8389 CD 75 80         call mkScreenBlack
+ 19   838C CD 14 81         call paintCastle
+ 20   838F CD AF 81         call paintRoad
+ 21   8392 CD D3 81         call paintGrass
+ 22   8395
+ 23   8395 0E 01            ld c,1
+ 24   8397 16 03            ld d,03h
+ 25   8399 1E 01            ld e,1
+ 26   839B CD B4 83         call AllocMonster
+ 27   839E
+ 28   839E 0E 02            ld c,2
+ 29   83A0 16 05            ld d,05h
+ 30   83A2 1E 00            ld e,0
+ 31   83A4 CD B4 83         call AllocMonster
+ 32   83A7
+ 33   83A7 CD 39 82         call mainLoop
+ 34   83AA
+ 35   83AA                  include "monster.inc"
+# file opened: ./inc/monster.inc
+  1+  83AA              ;;Add any new monsters
+  2+  83AA              ;;Remove any dead monsters
+  3+  83AA              ;;Update monster positions
+  4+  83AA              ;;Redraw monsters
+  5+  83AA              monsterHandler:
+  6+  83AA              .clearTheDead:
+  7+  83AA CD F3 83         call ClearDeadMonsters
+  8+  83AD
+  9+  83AD              .drawMonsters:
+ 10+  83AD CD BA 84         call DrawMonsterHeap
+ 11+  83B0
+ 12+  83B0              .moveMonsters:
+ 13+  83B0 CD 58 85         call UpdateMonsterPositions
+ 14+  83B3
+ 15+  83B3              .exit:
+ 16+  83B3 C9               ret
+ 17+  83B4
+ 18+  83B4
+ 19+  83B4
+ 20+  83B4              ;;Monster Heap Entry Format
+ 21+  83B4              ;; Byte 0: Monster Sprite
+ 22+  83B4              ;; Byte 1: Health Point of Monster
+ 23+  83B4              ;; Byte 2: The path the monster is taking
+ 24+  83B4              ;; Byte 3: Index in path the monster is on
+ 25+  83B4
+ 26+  83B4              ;; Arguments:
+ 27+  83B4              ;; c: Sprite
+ 28+  83B4              ;; d: Health Points
+ 29+  83B4              ;; e: path
+ 30+  83B4              AllocMonster:
+ 31+  83B4 C5               push bc
+ 32+  83B5 DD E5            push ix
+ 33+  83B7
+ 34+  83B7 DD 21 5F 86      ld ix,MonsterHeap.startOfHeap
+ 35+  83BB
+ 36+  83BB 3A 5E 86         ld a,(MonsterHeap.numActiveMonsters)
+ 37+  83BE FE 00            cp 0
+ 38+  83C0 28 0B            jr z, .insertDataToHeap
+ 39+  83C2
+ 40+  83C2 47               ld b,a
+ 41+  83C3              .addrCalcLoop
+ 42+  83C3 DD 23            inc ix
+ 43+  83C5 DD 23            inc ix
+ 44+  83C7 DD 23            inc ix
+ 45+  83C9 DD 23            inc ix
+ 46+  83CB
+ 47+  83CB 10 F6            djnz .addrCalcLoop
+ 48+  83CD
+ 49+  83CD              .insertDataToHeap
+ 50+  83CD DD 71 00         ld (ix),c
+ 51+  83D0 DD 72 01         ld (ix+1),d
+ 52+  83D3 DD 73 02         ld (ix+2),e
+ 53+  83D6 DD 36 03 00      ld (ix+3),0 ;Start monster on start of path
+ 54+  83DA
+ 55+  83DA DD 54 DD 5D      ld de,ix
+ 56+  83DE DD 21 5C 86      ld ix,MonsterHeap.locOfLastMonster
+ 57+  83E2 DD 73 00 DD      ld (ix),de
+ 57+  83E6 72 01
+ 58+  83E8
+ 59+  83E8 DD 21 5E 86      ld ix,MonsterHeap.numActiveMonsters
+ 60+  83EC DD 34 00         inc (ix)
+ 61+  83EF
+ 62+  83EF              .exit
+ 63+  83EF DD E1            pop ix
+ 64+  83F1 C1               pop bc
+ 65+  83F2 C9               ret
+ 66+  83F3
+ 67+  83F3              ClearDeadMonsters:
+ 68+  83F3 DD E5            push ix
+ 69+  83F5 C5               push bc
+ 70+  83F6 F5               push af
+ 71+  83F7 FD E5            push iy
+ 72+  83F9 D5               push de
+ 73+  83FA E5               push hl
+ 74+  83FB
+ 75+  83FB 3A 5E 86         ld a,(MonsterHeap.numActiveMonsters)
+ 76+  83FE FE 00            cp 0
+ 77+  8400 CA B1 84         jp z, .exit
+ 78+  8403
+ 79+  8403 47               ld b,a
+ 80+  8404 DD 21 5F 86      ld ix,MonsterHeap.startOfHeap
+ 81+  8408
+ 82+  8408              .loop:
+ 83+  8408 3A 5E 86         ld a,(MonsterHeap.numActiveMonsters)
+ 84+  840B FE 01            cp 1
+ 85+  840D 28 61            jr z, .clearLastMonster
+ 86+  840F
+ 87+  840F DD 7E 01         ld a,(ix+1) ;;Load in health of current monster
+ 88+  8412 FE 00            cp 0
+ 89+  8414 20 4E            jr nz, .continue
+ 90+  8416
+ 91+  8416              .drawOverDeadMonster:
+ 92+  8416 DD 66 02         ld h,(ix+2)
+ 93+  8419 DD 6E 03         ld l,(ix+3)
+ 94+  841C 2D               dec l
+ 95+  841D
+ 96+  841D CD 26 85         call getPathCoords
+ 97+  8420 11 00 80         ld de,cobbleTile
+ 98+  8423 CD EF 81         call print8x8
+ 99+  8426
+100+  8426 3E 38            ld a,PAPER_WHITE
+101+  8428 F6 00            or INK_BLACK
+102+  842A CD 0D 82         call applyAttrAt
+103+  842D
+104+  842D              .decMonsterCount:
+105+  842D FD 2A 5C 86      ld iy,(MonsterHeap.locOfLastMonster)
+106+  8431
+107+  8431 FD 4E 00         ld c,(iy)
+108+  8434 DD 71 00         ld (ix),c
+109+  8437
+110+  8437 FD 4E 01         ld c,(iy+1)
+111+  843A DD 71 01         ld (ix+1),c
+112+  843D
+113+  843D FD 4E 02         ld c,(iy+2)
+114+  8440 DD 71 02         ld (ix+2),c
+115+  8443
+116+  8443 FD 4E 03         ld c,(iy+3)
+117+  8446 DD 71 03         ld (ix+3),c
+118+  8449
+119+  8449 FD 21 5C 86      ld iy,MonsterHeap.locOfLastMonster
+120+  844D FD 35 00         dec (iy)
+121+  8450 FD 35 00         dec (iy)
+122+  8453 FD 35 00         dec (iy)
+123+  8456 FD 35 00         dec (iy)
+124+  8459
+125+  8459 FD 21 5E 86      ld iy, MonsterHeap.numActiveMonsters
+126+  845D FD 35 00         dec (iy)
+127+  8460
+128+  8460 10 A6            djnz .loop
+129+  8462 18 4D            jr .exit
+130+  8464
+131+  8464              .continue
+132+  8464 DD 23            inc ix
+133+  8466 DD 23            inc ix
+134+  8468 DD 23            inc ix
+135+  846A DD 23            inc ix
+136+  846C 10 9A            djnz .loop
+137+  846E 18 41            jr .exit
+138+  8470
+139+  8470              .clearLastMonster:
+140+  8470                  ;;If monster is not dead, jump to exit
+141+  8470 DD 21 5F 86      ld ix, MonsterHeap.startOfHeap
+142+  8474 DD 7E 01         ld a,(ix+1)
+143+  8477 FE 00            cp 0
+144+  8479 C2 B1 84         jp nz, .exit
+145+  847C
+146+  847C DD 66 02         ld h,(ix+2)
+147+  847F DD 6E 03         ld l,(ix+3)
+148+  8482 2D               dec l
+149+  8483
+150+  8483 CD 26 85         call getPathCoords
+151+  8486 11 00 80         ld de,cobbleTile
+152+  8489 CD EF 81         call print8x8
+153+  848C
+154+  848C 3E 38            ld a,PAPER_WHITE
+155+  848E F6 00            or INK_BLACK
+156+  8490 CD 0D 82         call applyAttrAt
+157+  8493
+158+  8493 FD 21 5C 86      ld iy,MonsterHeap.locOfLastMonster
+159+  8497 FD 35 00         dec (iy)
+160+  849A FD 35 00         dec (iy)
+161+  849D FD 35 00         dec (iy)
+162+  84A0 FD 35 00         dec (iy)
+163+  84A3
+164+  84A3 DD 21 5E 86      ld ix, MonsterHeap.numActiveMonsters
+165+  84A7 DD 35 00         dec (ix)
+166+  84AA
+167+  84AA DD 66 02         ld h,(ix+2)
+168+  84AD DD 6E 03         ld l,(ix+3)
+169+  84B0 2D               dec l
+170+  84B1
+171+  84B1              .exit:
+172+  84B1 E1               pop hl
+173+  84B2 D1               pop de
+174+  84B3 FD E1            pop iy
+175+  84B5 F1               pop af
+176+  84B6 C1               pop bc
+177+  84B7 DD E1            pop ix
+178+  84B9 C9               ret
+179+  84BA
+180+  84BA              DrawMonsterHeap:
+181+  84BA DD E5            push ix
+182+  84BC F5               push af
+183+  84BD C5               push bc
+184+  84BE E5               push hl
+185+  84BF D5               push de
+186+  84C0 FD E5            push iy
+187+  84C2
+188+  84C2 DD 21 5F 86      ld ix, MonsterHeap.startOfHeap
+189+  84C6 3A 5E 86         ld a, (MonsterHeap.numActiveMonsters)
+190+  84C9 FE 00            cp 0
+191+  84CB CA 1D 85         jp z, .exit
+192+  84CE
+193+  84CE 47               ld b,a
+194+  84CF
+195+  84CF              .loop:
+196+  84CF DD 66 02         ld h,(ix+2) ;;Id of path monster is on
+197+  84D2 DD 6E 03         ld l,(ix+3) ;;Index on path monster is taking
+198+  84D5
+199+  84D5 CD 26 85         call getPathCoords ;Convert path info to coordinates
+200+  84D8                  ;;hl now has coords
+201+  84D8
+202+  84D8                  ;;If we are on the last coord, then the monster
+203+  84D8                  ;;is at the end of it's path
+204+  84D8 ED 5B 7A 85      ld de,(monsterPathOne) ;;
+205+  84DC ED 52            sbc hl,de
+206+  84DE 20 0B            jr nz, .drawMonster
+207+  84E0
+208+  84E0              .killMonsterAtEndOfPath:
+209+  84E0 DD 36 01 00      ld (ix+1),0
+210+  84E4 FD 21 58 82      ld iy,CastleHP
+211+  84E8 FD 35 00         dec (iy)
+212+  84EB
+213+  84EB              .drawMonster:
+214+  84EB 19               add hl,de
+215+  84EC 11 20 80         ld de,skullTile
+216+  84EF CD EF 81         call print8x8
+217+  84F2
+218+  84F2 3E 38            ld a,PAPER_WHITE
+219+  84F4 F6 02            or INK_RED
+220+  84F6 CD 0D 82         call applyAttrAt
+221+  84F9
+222+  84F9              .reDrawOldLocation:
+223+  84F9 DD 66 02         ld h,(ix+2)
+224+  84FC DD 6E 03         ld l,(ix+3)
+225+  84FF 2D               dec l
+226+  8500
+227+  8500 FA 13 85         jp m, .continue
+228+  8503
+229+  8503 CD 26 85         call getPathCoords
+230+  8506 11 00 80         ld de,cobbleTile
+231+  8509 CD EF 81         call print8x8
+232+  850C
+233+  850C 3E 38            ld a,PAPER_WHITE
+234+  850E F6 00            or INK_BLACK
+235+  8510 CD 0D 82         call applyAttrAt
+236+  8513
+237+  8513              .continue
+238+  8513 DD 23            inc ix
+239+  8515 DD 23            inc ix
+240+  8517 DD 23            inc ix
+241+  8519 DD 23            inc ix
+242+  851B 10 B2            djnz .loop
+243+  851D
+244+  851D              .exit:
+245+  851D FD E1            pop iy
+246+  851F D1               pop de
+247+  8520 E1               pop hl
+248+  8521 C1               pop bc
+249+  8522 F1               pop af
+250+  8523 DD E1            pop ix
+251+  8525 C9               ret
+252+  8526
+253+  8526              getPathCoords:
+254+  8526 F5               push af
+255+  8527 D5               push de
+256+  8528
+257+  8528 54 5D            ld de,hl
+258+  852A 13               inc de
+259+  852B
+260+  852B              .getPathInfoAddr:
+261+  852B 7C               ld a,h
+262+  852C FE 00            cp 0
+263+  852E 28 08            jr z, .ldPathOne
+264+  8530
+265+  8530 FE 01            cp 1
+266+  8532 28 09            jr z, .ldPathTwo
+267+  8534
+268+  8534 FE 02            cp 2
+269+  8536 28 0A            jr z, .ldPathThree
+270+  8538
+271+  8538              .ldPathOne:
+272+  8538 21 B0 85         ld hl, monsterPathOne.end
+273+  853B 18 0A            jr .addIndex
+274+  853D
+275+  853D              .ldPathTwo:
+276+  853D 21 08 86         ld hl, monsterPathTwo.end
+277+  8540 18 05            jr .addIndex
+278+  8542
+279+  8542              .ldPathThree:
+280+  8542 21 5C 86         ld hl, monsterPathThree.end
+281+  8545 18 00            jr .addIndex
+282+  8547
+283+  8547              .addIndex:
+284+  8547 16 00            ld d,0
+285+  8549 B7 ED 52         sub hl,de
+286+  854C B7 ED 52         sub hl,de
+287+  854F 5E 23 56 2B      ld de,(hl)
+288+  8553 62 6B            ld hl,de
+289+  8555
+290+  8555              .exit:
+291+  8555 D1               pop de
+292+  8556 F1               pop af
+293+  8557 C9               ret
+294+  8558
+295+  8558              UpdateMonsterPositions:
+296+  8558 DD E5            push ix
+297+  855A C5               push bc
+298+  855B F5               push af
+299+  855C
+300+  855C 3A 5E 86         ld a,(MonsterHeap.numActiveMonsters)
+301+  855F FE 00            cp 0
+302+  8561 28 12            jr z, .exit
+303+  8563
+304+  8563 47               ld b,a
+305+  8564
+306+  8564 DD 21 5F 86      ld ix,MonsterHeap.startOfHeap
+307+  8568              .loop:
+308+  8568 DD 34 03         inc (ix+3)
+309+  856B
+310+  856B DD 23            inc ix
+311+  856D DD 23            inc ix
+312+  856F DD 23            inc ix
+313+  8571 DD 23            inc ix
+314+  8573 10 F3            djnz .loop
+315+  8575
+316+  8575              .exit:
+317+  8575 F1               pop af
+318+  8576 C1               pop bc
+319+  8577 DD E1            pop ix
+320+  8579 C9               ret
+321+  857A
+322+  857A
+323+  857A              monsterPathOne:
+324+  857A 40 18            dw 0x1840
+325+  857C 48 18            dw 0x1848
+326+  857E 50 18            dw 0x1850
+327+  8580 58 18            dw 0x1858
+328+  8582 58 20            dw 0x2058
+329+  8584 58 28            dw 0x2858
+330+  8586 58 30            dw 0x3058
+331+  8588 58 38            dw 0x3858
+332+  858A 58 40            dw 0x4058
+333+  858C 58 48            dw 0x4858
+334+  858E 58 50            dw 0x5058
+335+  8590 60 50            dw 0x5060
+336+  8592 68 50            dw 0x5068
+337+  8594 70 50            dw 0x5070
+338+  8596 70 58            dw 0x5870
+339+  8598 70 60            dw 0x6070
+340+  859A 70 68            dw 0x6870
+341+  859C 70 70            dw 0x7070
+342+  859E
+343+  859E 78 70            dw 0x7078
+344+  85A0 80 70            dw 0x7080
+345+  85A2 88 70            dw 0x7088
+346+  85A4 90 70            dw 0x7090
+347+  85A6 98 70            dw 0x7098
+348+  85A8 A0 70            dw 0x70A0
+349+  85AA A8 70            dw 0x70A8
+350+  85AC B0 70            dw 0x70B0
+351+  85AE B8 70            dw 0x70B8
+352+  85B0
+353+  85B0              .end
+354+  85B0
+355+  85B0              monsterPathTwo:
+356+  85B0 40 18            dw 0x1840
+357+  85B2 48 18            dw 0x1848
+358+  85B4 50 18            dw 0x1850
+359+  85B6 58 18            dw 0x1858
+360+  85B8 58 20            dw 0x2058
+361+  85BA 58 28            dw 0x2858
+362+  85BC 58 30            dw 0x3058
+363+  85BE 58 38            dw 0x3858
+364+  85C0 58 40            dw 0x4058
+365+  85C2 58 48            dw 0x4858
+366+  85C4 58 50            dw 0x5058
+367+  85C6 60 50            dw 0x5060
+368+  85C8 68 50            dw 0x5068
+369+  85CA 70 50            dw 0x5070
+370+  85CC 70 58            dw 0x5870
+371+  85CE 70 60            dw 0x6070
+372+  85D0 70 68            dw 0x6870
+373+  85D2 70 70            dw 0x7070
+374+  85D4
+375+  85D4 70 78            dw 0x7870
+376+  85D6 70 80            dw 0x8070
+377+  85D8 70 88            dw 0x8870
+378+  85DA 70 90            dw 0x9070
+379+  85DC 70 98            dw 0x9870
+380+  85DE 70 A0            dw 0xA070
+381+  85E0 70 A8            dw 0xA870
+382+  85E2 70 B0            dw 0xB070
+383+  85E4 70 B8            dw 0xB870
+384+  85E6 68 B8            dw 0xB868
+385+  85E8 60 B8            dw 0xB860
+386+  85EA 58 B8            dw 0xB858
+387+  85EC 50 B8            dw 0xB850
+388+  85EE 48 B8            dw 0xB848
+389+  85F0 40 B8            dw 0xB840
+390+  85F2 38 B8            dw 0xB838
+391+  85F4 30 B8            dw 0xB830
+392+  85F6 28 B8            dw 0xB828
+393+  85F8 28 C0            dw 0xC028
+394+  85FA 28 C8            dw 0xC828
+395+  85FC
+396+  85FC 28 D0            dw 0xD028
+397+  85FE 28 D8            dw 0xD828
+398+  8600 28 E0            dw 0xE028
+399+  8602 28 E8            dw 0xE828
+400+  8604 28 F0            dw 0xF028
+401+  8606 28 FF            dw 0xFF28
+402+  8608              .end
+403+  8608
+404+  8608              monsterPathThree:
+405+  8608 40 18            dw 0x1840
+406+  860A 48 18            dw 0x1848
+407+  860C 50 18            dw 0x1850
+408+  860E 58 18            dw 0x1858
+409+  8610 58 20            dw 0x2058
+410+  8612 58 28            dw 0x2858
+411+  8614 58 30            dw 0x3058
+412+  8616 58 38            dw 0x3858
+413+  8618 58 40            dw 0x4058
+414+  861A 58 48            dw 0x4858
+415+  861C 58 50            dw 0x5058
+416+  861E 60 50            dw 0x5060
+417+  8620 68 50            dw 0x5068
+418+  8622 70 50            dw 0x5070
+419+  8624 70 58            dw 0x5870
+420+  8626 70 60            dw 0x6070
+421+  8628 70 68            dw 0x6870
+422+  862A 70 70            dw 0x7070
+423+  862C
+424+  862C 70 78            dw 0x7870
+425+  862E 70 80            dw 0x8070
+426+  8630 70 88            dw 0x8870
+427+  8632 70 90            dw 0x9070
+428+  8634 70 98            dw 0x9870
+429+  8636 70 A0            dw 0xA070
+430+  8638 70 A8            dw 0xA870
+431+  863A 70 B0            dw 0xB070
+432+  863C 70 B8            dw 0xB870
+433+  863E 68 B8            dw 0xB868
+434+  8640 60 B8            dw 0xB860
+435+  8642 58 B8            dw 0xB858
+436+  8644 50 B8            dw 0xB850
+437+  8646 48 B8            dw 0xB848
+438+  8648 40 B8            dw 0xB840
+439+  864A 38 B8            dw 0xB838
+440+  864C 30 B8            dw 0xB830
+441+  864E 28 B8            dw 0xB828
+442+  8650 28 C0            dw 0xC028
+443+  8652 28 C8            dw 0xC828
+444+  8654
+445+  8654 20 C8            dw 0xC820
+446+  8656 18 C8            dw 0xC818
+447+  8658 10 C8            dw 0xC810
+448+  865A 08 C8            dw 0xC808
+449+  865C              .end
+450+  865C
+451+  865C              MonsterHeap:
+452+  865C              .locOfLastMonster:
+453+  865C 00 00            dw 0000h
+454+  865E              .numActiveMonsters:
+455+  865E 00               db 00h
+456+  865F              .startOfHeap
+457+  865F
+458+  865F                  savesna "out.sna",start
+# file closed: ./inc/monster.inc
+ 36   865F
+# file closed: ./main.asm
