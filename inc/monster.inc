@@ -265,19 +265,12 @@ getPathCoords:
     cp 1
     jr z, .ldPathTwo
 
-    cp 2
-    jr z, .ldPathThree
-
 .ldPathOne:
     ld hl, monsterPathOne.end 
     jr .addIndex
 
 .ldPathTwo:
     ld hl, monsterPathTwo.end
-    jr .addIndex
-
-.ldPathThree:
-    ld hl, monsterPathThree.end
     jr .addIndex
 
 .addIndex:
