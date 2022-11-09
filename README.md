@@ -1,1 +1,1 @@
-![Model](https://raw.githubusercontent.com/slancaster44/zxs-castle/screenshot.png>)
+![Model](https://raw.githubusercontent.com/slancaster44/zxs-castle/main/screenshot.png>)
